@@ -10,6 +10,11 @@ fn main() {
         io::stdout().flush().unwrap();
         io::stdin().read_line(&mut input).unwrap();
 
+        match input.trim() {
+            "exit" => break,
+            _ => {}
+        }
+
         println!("{}: command not found", input.trim());
     }
 }
