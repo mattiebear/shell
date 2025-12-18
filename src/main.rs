@@ -31,7 +31,7 @@ fn parse_command(input: String) -> Option<Command> {
         let (name, args) = input.split_at(split_index);
 
         match name {
-            "echo" => Some(Command::Echo(args.to_string())),
+            "echo" => Some(Command::Echo(args.to_string().trim().to_string())),
             _ => None,
         }
     } else {
