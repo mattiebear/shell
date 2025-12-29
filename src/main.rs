@@ -1,4 +1,7 @@
+use std::env;
 use std::io::{self, Write};
+use std::os::unix::fs::PermissionsExt;
+use std::path::PathBuf;
 
 fn main() {
     let mut input = String::new();
@@ -54,6 +57,31 @@ impl Command {
         matches!(name, "echo" | "type" | "exit")
     }
 
+    fn find_executable(name: &str) -> Option<Executable> {
+        let paths: Vec<PathBuf> = if let Some(path_var) = env::var_os("PATH") {
+            env::split_paths(&path_var).collect()
+        } else {
+            Vec::new()
+        };
+
+        for path in paths.iter() {
+            let file = path.join(name);
+
+            if file.is_file() {
+                if let Ok(metadata) = path.metadata() {
+                    if metadata.permissions().mode() & 0o111 != 0 {
+                        return Some(Executable {
+                            name: name.to_string(),
+                            path: file,
+                        });
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
     fn execute(&self) -> CommandResult {
         match self {
             Command::Echo(args) => {
@@ -64,6 +92,8 @@ impl Command {
             Command::Type(args) => {
                 if Command::is_builtin(args) {
                     println!("{} is a shell builtin", args);
+                } else if let Some(exec) = Command::find_executable(args) {
+                    println!("{} is {}", exec.name, exec.path.display());
                 } else {
                     println!("{}: not found", args);
                 }
@@ -72,4 +102,9 @@ impl Command {
             }
         }
     }
+}
+
+struct Executable {
+    name: String,
+    path: PathBuf,
 }
