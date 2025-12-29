@@ -73,7 +73,7 @@ impl Command {
             let file = path.join(name);
 
             if file.is_file() {
-                if let Ok(metadata) = path.metadata() {
+                if let Ok(metadata) = file.metadata() {
                     if metadata.permissions().mode() & 0o111 != 0 {
                         return Some(Executable {
                             name: name.to_string(),
