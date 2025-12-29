@@ -35,6 +35,11 @@ enum Command {
     Type(String),
 }
 
+struct Executable {
+    name: String,
+    path: PathBuf,
+}
+
 impl Command {
     fn parse(input: String) -> Option<Self> {
         if let Some(split_index) = input.find(" ") {
@@ -102,9 +107,4 @@ impl Command {
             }
         }
     }
-}
-
-struct Executable {
-    name: String,
-    path: PathBuf,
 }

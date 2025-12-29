@@ -7,7 +7,10 @@ A minimal Unix shell implementation written in Rust, built as a learning project
 - **Built-in commands:**
   - `echo` - Display text
   - `exit` - Exit the shell
-  - `type` - Display command type information (planned)
+  - `type` - Display command type information
+    - Identifies shell builtins
+    - Searches PATH for executable files
+    - Shows full path to executables
 
 - Clean command parsing and execution architecture
 - Interactive REPL with command prompt
