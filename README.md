@@ -1,35 +1,35 @@
-[![progress-banner](https://backend.codecrafters.io/progress/shell/e44f0d73-7cac-4895-bbde-a28bcaaa83b7)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
+# Rust Shell
 
-This is a starting point for Rust solutions to the
-["Build Your Own Shell" Challenge](https://app.codecrafters.io/courses/shell/overview).
+A minimal Unix shell implementation written in Rust, built as a learning project to understand shell internals and Rust systems programming.
 
-In this challenge, you'll build your own POSIX compliant shell that's capable of
-interpreting shell commands, running external programs and builtin commands like
-cd, pwd, echo and more. Along the way, you'll learn about shell command parsing,
-REPLs, builtin commands, and more.
+## Features
 
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
+- **Built-in commands:**
+  - `echo` - Display text
+  - `exit` - Exit the shell
+  - `type` - Display command type information (planned)
 
-# Passing the first stage
+- Clean command parsing and execution architecture
+- Interactive REPL with command prompt
 
-The entry point for your `shell` implementation is in `src/main.rs`. Study and
-uncomment the relevant code, and push your changes to pass the first stage:
+## How It Works
 
-```sh
-git commit -am "pass 1st stage" # any msg
-git push origin master
+The shell uses an enum-based command representation where each built-in command is a variant of the `Command` enum. Commands are parsed from user input, matched against known builtins, and executed with a simple pattern matching system.
+
+The architecture separates parsing (`Command::parse()`) from execution, allowing for clean separation of concerns and easy addition of new commands.
+
+## Building
+
+```bash
+cargo build --release
 ```
 
-Time to move on to the next stage!
+## Running
 
-# Stage 2 & beyond
+```bash
+cargo run
+```
 
-Note: This section is for stages 2 and beyond.
+## Project Status
 
-1. Ensure you have `cargo (1.91)` installed locally
-1. Run `./your_program.sh` to run your program, which is implemented in
-   `src/main.rs`. This command compiles your Rust project, so it might be slow
-   the first time you run it. Subsequent runs will be fast.
-1. Commit your changes and run `git push origin master` to submit your solution
-   to CodeCrafters. Test output will be streamed to your terminal.
+Active development - currently implementing core shell built-ins and exploring architectural patterns for command execution and control flow.
