@@ -13,7 +13,7 @@ fn main() {
         io::stdout().flush().unwrap();
         io::stdin().read_line(&mut input).unwrap();
 
-        if let Some(command) = Command::parse(input.trim().to_string()) {
+        if let Ok(command) = Command::parse(&input.trim().to_string()) {
             match command.execute() {
                 CommandResult::Continue => continue,
                 CommandResult::Exit => break,
@@ -29,37 +29,67 @@ enum CommandResult {
     Exit,
 }
 
-enum Command {
-    Echo(String),
-    Exit,
-    Type(String),
-}
-
+#[derive(Clone)]
 struct Executable {
     name: String,
     path: PathBuf,
 }
 
-impl Command {
-    fn parse(input: String) -> Option<Self> {
-        if let Some(split_index) = input.find(" ") {
-            let (name, args) = input.split_at(split_index);
+enum CommandType {
+    Echo,
+    Exec(Executable),
+    Exit,
+    Type,
+}
 
-            match name {
-                "echo" => Some(Command::Echo(args.trim().to_string())),
-                "type" => Some(Command::Type(args.trim().to_string())),
-                _ => None,
+struct Command {
+    args: Vec<String>,
+    command_type: CommandType,
+}
+
+impl Command {
+    fn parse(input: &String) -> Result<Self, String> {
+        let arg_list: Vec<String> = input
+            .split(" ")
+            .map(|s| s.to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        let rest = arg_list[1..].to_vec();
+
+        if let Some(name) = arg_list.first() {
+            if Self::is_builtin(name) {
+                let command_type = Self::get_builtin(name).unwrap();
+                Ok(Command {
+                    args: rest,
+                    command_type,
+                })
+            } else {
+                if let Some(executable) = Self::find_executable(name) {
+                    return Ok(Command {
+                        args: rest,
+                        command_type: CommandType::Exec(executable),
+                    });
+                } else {
+                    Err(format!("Command not found: {}", name))
+                }
             }
         } else {
-            match input.as_str() {
-                "exit" => Some(Command::Exit),
-                _ => None,
-            }
+            Err("No command provided".to_string())
         }
     }
 
     fn is_builtin(name: &str) -> bool {
         matches!(name, "echo" | "type" | "exit")
+    }
+
+    fn get_builtin(name: &str) -> Option<CommandType> {
+        match name {
+            "echo" => Some(CommandType::Echo),
+            "type" => Some(CommandType::Type),
+            "exit" => Some(CommandType::Exit),
+            _ => None,
+        }
     }
 
     fn find_executable(name: &str) -> Option<Executable> {
@@ -88,19 +118,23 @@ impl Command {
     }
 
     fn execute(&self) -> CommandResult {
-        match self {
-            Command::Echo(args) => {
-                println!("{}", args);
+        match &self.command_type {
+            CommandType::Echo => {
+                println!("{}", self.args.join(" "));
                 CommandResult::Continue
             }
-            Command::Exit => CommandResult::Exit,
-            Command::Type(args) => {
-                if Command::is_builtin(args) {
-                    println!("{} is a shell builtin", args);
-                } else if let Some(exec) = Command::find_executable(args) {
+            CommandType::Exec(executable) => {
+                println!("Executing {}", executable.name);
+                CommandResult::Continue
+            }
+            CommandType::Exit => CommandResult::Exit,
+            CommandType::Type => {
+                if Command::is_builtin(&self.args.first().unwrap()) {
+                    println!("{} is a shell builtin", &self.args.first().unwrap());
+                } else if let Some(exec) = Command::find_executable(&self.args.first().unwrap()) {
                     println!("{} is {}", exec.name, exec.path.display());
                 } else {
-                    println!("{}: not found", args);
+                    println!("{}: not found", &self.args.first().unwrap());
                 }
 
                 CommandResult::Continue
