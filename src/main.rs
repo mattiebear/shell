@@ -2,6 +2,7 @@ use std::env;
 use std::io::{self, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
+use std::process::Command;
 
 fn main() {
     let mut input = String::new();
@@ -13,10 +14,10 @@ fn main() {
         io::stdout().flush().unwrap();
         io::stdin().read_line(&mut input).unwrap();
 
-        if let Ok(command) = Command::parse(&input.trim().to_string()) {
+        if let Ok(command) = ShellCommand::parse(&input.trim().to_string()) {
             match command.execute() {
-                CommandResult::Continue => continue,
-                CommandResult::Exit => break,
+                ShellCommandResult::Continue => continue,
+                ShellCommandResult::Exit => break,
             }
         } else {
             println!("{}: command not found", input.trim());
@@ -24,7 +25,7 @@ fn main() {
     }
 }
 
-enum CommandResult {
+enum ShellCommandResult {
     Continue,
     Exit,
 }
@@ -35,32 +36,32 @@ struct Executable {
     path: PathBuf,
 }
 
-enum CommandType {
+enum ShellCommandType {
     Echo,
     Exec(Executable),
     Exit,
     Type,
 }
 
-struct Command {
+struct ShellCommand {
     args: Vec<String>,
-    command_type: CommandType,
+    command_type: ShellCommandType,
 }
 
-impl Command {
+impl ShellCommand {
     fn parse(input: &String) -> Result<Self, String> {
         let arg_list: Vec<String> = input.split_whitespace().map(|s| s.to_string()).collect();
 
         if let [name, rest @ ..] = arg_list.as_slice() {
             if let Some(command_type) = Self::get_builtin(name) {
-                Ok(Command {
+                Ok(ShellCommand {
                     args: rest.to_vec(),
                     command_type,
                 })
             } else if let Some(executable) = Self::find_executable(name) {
-                Ok(Command {
+                Ok(ShellCommand {
                     args: rest.to_vec(),
-                    command_type: CommandType::Exec(executable),
+                    command_type: ShellCommandType::Exec(executable),
                 })
             } else {
                 Err(format!("Command not found: {}", name))
@@ -77,11 +78,11 @@ impl Command {
         }
     }
 
-    fn get_builtin(name: &str) -> Option<CommandType> {
+    fn get_builtin(name: &str) -> Option<ShellCommandType> {
         match name {
-            "echo" => Some(CommandType::Echo),
-            "type" => Some(CommandType::Type),
-            "exit" => Some(CommandType::Exit),
+            "echo" => Some(ShellCommandType::Echo),
+            "type" => Some(ShellCommandType::Type),
+            "exit" => Some(ShellCommandType::Exit),
             _ => None,
         }
     }
@@ -111,27 +112,41 @@ impl Command {
         None
     }
 
-    fn execute(&self) -> CommandResult {
+    fn execute(&self) -> ShellCommandResult {
         match &self.command_type {
-            CommandType::Echo => {
+            ShellCommandType::Echo => {
                 println!("{}", self.args.join(" "));
-                CommandResult::Continue
+                ShellCommandResult::Continue
             }
-            CommandType::Exec(executable) => {
-                println!("Executing {}", executable.name);
-                CommandResult::Continue
+            ShellCommandType::Exec(executable) => {
+                let status = Command::new(executable.path.to_str().unwrap())
+                    .args(&self.args)
+                    .stdin(std::process::Stdio::inherit())
+                    .stdout(std::process::Stdio::inherit())
+                    .stderr(std::process::Stdio::inherit())
+                    .status();
+
+                match status {
+                    Ok(_) => ShellCommandResult::Continue,
+                    Err(e) => {
+                        eprintln!("Failed to execute {}: {}", executable.name, e);
+                        ShellCommandResult::Continue
+                    }
+                }
             }
-            CommandType::Exit => CommandResult::Exit,
-            CommandType::Type => {
-                if Command::is_builtin(&self.args.first().unwrap()) {
+            ShellCommandType::Exit => ShellCommandResult::Exit,
+            ShellCommandType::Type => {
+                if ShellCommand::is_builtin(&self.args.first().unwrap()) {
                     println!("{} is a shell builtin", &self.args.first().unwrap());
-                } else if let Some(exec) = Command::find_executable(&self.args.first().unwrap()) {
+                } else if let Some(exec) =
+                    ShellCommand::find_executable(&self.args.first().unwrap())
+                {
                     println!("{} is {}", exec.name, exec.path.display());
                 } else {
                     println!("{}: not found", &self.args.first().unwrap());
                 }
 
-                CommandResult::Continue
+                ShellCommandResult::Continue
             }
         }
     }
