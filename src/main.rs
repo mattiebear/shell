@@ -49,30 +49,21 @@ struct Command {
 
 impl Command {
     fn parse(input: &String) -> Result<Self, String> {
-        let arg_list: Vec<String> = input
-            .split(" ")
-            .map(|s| s.to_string())
-            .filter(|s| !s.is_empty())
-            .collect();
+        let arg_list: Vec<String> = input.split_whitespace().map(|s| s.to_string()).collect();
 
-        let rest = arg_list[1..].to_vec();
-
-        if let Some(name) = arg_list.first() {
-            if Self::is_builtin(name) {
-                let command_type = Self::get_builtin(name).unwrap();
+        if let [name, rest @ ..] = arg_list.as_slice() {
+            if let Some(command_type) = Self::get_builtin(name) {
                 Ok(Command {
-                    args: rest,
+                    args: rest.to_vec(),
                     command_type,
                 })
+            } else if let Some(executable) = Self::find_executable(name) {
+                Ok(Command {
+                    args: rest.to_vec(),
+                    command_type: CommandType::Exec(executable),
+                })
             } else {
-                if let Some(executable) = Self::find_executable(name) {
-                    return Ok(Command {
-                        args: rest,
-                        command_type: CommandType::Exec(executable),
-                    });
-                } else {
-                    Err(format!("Command not found: {}", name))
-                }
+                Err(format!("Command not found: {}", name))
             }
         } else {
             Err("No command provided".to_string())
@@ -80,7 +71,10 @@ impl Command {
     }
 
     fn is_builtin(name: &str) -> bool {
-        matches!(name, "echo" | "type" | "exit")
+        match Self::get_builtin(name) {
+            Some(_) => true,
+            None => false,
+        }
     }
 
     fn get_builtin(name: &str) -> Option<CommandType> {
