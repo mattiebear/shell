@@ -1,6 +1,7 @@
 use std::env;
 use std::io::{self, Write};
 use std::os::unix::fs::PermissionsExt;
+use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -120,6 +121,7 @@ impl ShellCommand {
             }
             ShellCommandType::Exec(executable) => {
                 let status = Command::new(executable.path.to_str().unwrap())
+                    .arg0(&executable.name)
                     .args(&self.args)
                     .stdin(std::process::Stdio::inherit())
                     .stdout(std::process::Stdio::inherit())
